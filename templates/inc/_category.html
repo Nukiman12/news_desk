@@ -1,0 +1,18 @@
+{% load news_tags %}
+{# inc/_category.html — переиспользуемый блок со списком категорий.            #}
+{# Подключается через {% include 'inc/_category.html' %} (например, в main.html). #}
+{# Использует кастомные шаблонные теги из news/templatetags/news_tags.py.      #}
+
+    {# get_categories — simple_tag: кладёт QuerySet всех категорий в переменную category #}
+    <div class="category">
+        {% get_categories as category %}
+        {% for item in category %}
+            {# Ссылка на страницу категории: /category/<pk>/ #}
+            <a href="{% url 'category' item.pk %}" class="category__link">{{ item.title }}</a>
+        {% endfor %}
+    </div>
+
+    <br>
+
+    {# show_categories — inclusion_tag: сам рендерит list_categories.html со списком категорий #}
+    {% show_categories %}

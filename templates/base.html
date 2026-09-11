@@ -1,0 +1,47 @@
+{% load static %}
+{# base.html — базовый каркас всех страниц сайта.                       #}
+{# Остальные шаблоны наследуются от него через {% extends "base.html" %} #}
+{# и переопределяют только блок content.                                #}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {# Заголовок вкладки берётся из переменной title, переданной вью #}
+    <title>{{ title }}</title>
+    {# Подключение шрифта Inter с Google Fonts #}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    {# Основные стили проекта (static/css/style.css) #}
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+
+    {# --- Шапка сайта: логотип + навигация, общая для всех страниц --- #}
+    <header class="site-header">
+        <div class="container site-header__inner">
+            <a href="{% url 'main' %}" class="logo">
+                <span class="logo__mark">N</span>
+                <span class="logo__text">Новости</span>
+            </a>
+            <nav class="nav">
+                <a href="{% url 'main' %}" class="nav__link nav__link--active">Лента</a>
+                <a href="/admin/" class="nav__link">Админка</a>
+            </nav>
+        </div>
+    </header>
+
+    {# --- Основное содержимое страницы: заполняется дочерними шаблонами --- #}
+    {% block content %}
+    {% endblock %}
+
+    {# --- Подвал сайта, общий для всех страниц --- #}
+    <footer class="site-footer">
+        <div class="container">
+            <p>&copy; {% now "Y" %} Новости. Все права защищены.</p>
+        </div>
+    </footer>
+
+</body>
+</html>

@@ -1,0 +1,11 @@
+{# list_categories.html — шаблон для inclusion-тега show_categories.          #}
+{# Не открывается как отдельная страница: его рендерит тег show_categories    #}
+{# из news/templatetags/news_tags.py, передавая в контекст categories        #}
+{# (QuerySet всех объектов Category).                                        #}
+
+    <div class="category">
+        {% for item in categories %}
+            {# Ссылка на страницу конкретной категории: /category/<pk>/ #}
+            <a href="{% url 'category' item.pk %}" class="category__link">{{ item.title }}</a>
+        {% endfor %}
+    </div>
