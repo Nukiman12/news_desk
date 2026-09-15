@@ -408,10 +408,226 @@ def view_news(request, news_id):
 
 ---
 
-## 14. Возможные следующие шаги
+## 14. Форма добавления новости (`news/forms.py`, `add_news.html`)
 
-Не сделано в текущей версии, но логично напрашивается дальше:
+Добавлена возможность создавать новости прямо с сайта, без захода в
+`/admin/`.
 
-- Пагинация списка новостей.
-- Поиск по новостям (поле `search_fields` в админке уже намекает на это).
+### Форма: от `forms.Form` к `forms.ModelForm`
+
+Первая версия `NewsForm` (сейчас оставлена в файле закомментированной,
+как пример) была обычной `forms.Form` с полями, продублированными
+вручную:
+
+```python
+# class NewsForm(forms.Form):
+#     news = forms.CharField(max_length=150, ..., widget=forms.TextInput(attrs={"class": "form-control"}))
+#     description = forms.CharField(..., widget=forms.Textarea(attrs={"class": "form-control"}))
+#     is_published = forms.BooleanField(required=False, ..., widget=forms.CheckboxInput(attrs={"class": "form-check-input"}))
+#     Category = forms.ModelChoiceField(..., queryset=Category.objects.all(), widget=forms.Select(attrs={"class": "form-control"}))
+```
+
+Минус такого подхода — вьюхе пришлось бы вручную собирать объект
+`News` из `form.cleaned_data`. Итоговая версия — `forms.ModelForm`,
+поля берутся прямо из модели:
+
+```python
+class NewsForm(forms.ModelForm):
+    class Meta:
+        model = News
+        fields = ['news', 'description', 'content', 'is_published', 'Category']
+        widgets = {
+            "news": forms.TextInput(attrs={"class": "form-control"}),
+            'description': forms.Textarea(attrs={"class": "form-control", "rows": 5}),
+            'content': forms.Textarea(attrs={"class": "form-control", "rows": 10}),
+            'is_published': forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            'Category': forms.Select(attrs={"class": "form-control"}),
+        }
+```
+
+Поле `is_published` в самой модели (`news/models.py`) объявлено как
+`models.BooleanField(default=True)`, а в форме сделано `required=False`
+через кастомный виджет — иначе форму было бы невозможно отправить со
+снятой галочкой (`BooleanField` по умолчанию обязателен).
+
+> Обратите внимание: `image` в `Meta.fields` пока нет — картинку
+> сейчас всё ещё можно прикрепить только через `/admin/`, не через
+> публичную форму (см. пункт 15).
+
+### Вьюха (`news/views.py`)
+
+```python
+def add_news(request):
+    if request.method == 'POST':
+        form = NewsForm(request.POST)
+        if form.is_valid():
+            new = form.save()
+            return redirect(new)
+    else:
+        form = NewsForm()
+    return render(request, "add_news.html", {'form': form})
+```
+
+- `form.save()` у `ModelForm` сам создаёт объект `News` и сохраняет
+  его в базу — без ручного `News.objects.create(**form.cleaned_data)`
+  (такой вариант тоже остался закомментирован рядом, как альтернатива).
+- `redirect(new)` перенаправляет на `new.get_absolute_url()` — тот же
+  механизм, что уже использовался в моделях (пункт 13).
+- Паттерн Post/Redirect/Get: после успешной отправки происходит
+  редирект, а не повторный `render` той же формы — это не даёт
+  браузеру отправить форму ещё раз при обновлении страницы (F5).
+
+### Маршрут и шаблон
+
+Маршрут добавлен в `news/urls.py`:
+
+```python
+path("news/add-news/", views.add_news, name="add_news")
+```
+
+и ссылка на него — в навигации `base.html` («+ Добавить новость»).
+
+Шаблон `add_news.html` сначала перечислял каждое поле формы вручную
+(`form.title`, `form.content`, ...). Сейчас разметка полей вынесена в
+один цикл, а старый ручной вариант оставлен в `{% comment %}` для
+сравнения:
+
+```django
+{% for field in form %}
+    <div class="form_group">
+        <label class="form-label" for="{{field.id_for_label}}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.errors %}
+            <div class="invalid-feedback">{{ field.errors }}</div>
+        {% endif %}
+    </div>
+{% endfor %}
+```
+
+Плюс такого подхода — при добавлении нового поля в форму шаблон
+менять не нужно. Минус — сложнее точечно управлять версткой
+конкретного поля (например, чекбокс `is_published` в цикле выглядит
+так же, как текстовые поля, а не как отдельная строка с чекбоксом).
+
+---
+
+## 15. Загрузка изображений и медиафайлы
+
+К модели `News` добавлено поле картинки — не сразу в финальном виде,
+а через три последовательные миграции, что само по себе показательно.
+
+### Эволюция поля `image`
+
+```python
+# 0002_news_image.py — первая версия
+image = models.ImageField(blank=True, null=True, upload_to='media/')
+```
+
+`upload_to='media/'` здесь — ошибка: `MEDIA_ROOT` уже указывает на
+папку `media/`, значит файлы легли бы в `media/media/...`.
+
+```python
+# 0003_alter_news_image.py — добавлена заглушка по умолчанию
+image = models.ImageField(blank=True, null=True, upload_to='media/',
+                           default='media/default/new.jpg')
+```
+
+```python
+# 0004_alter_news_image.py — итоговая, исправленная версия
+image = models.ImageField(blank=True, null=True, upload_to='news/',
+                           default='default/new.jpg')
+```
+
+`upload_to` заменён на подпапку `news/` (без повторения `media/`), а
+`default` указывает на путь уже относительно `MEDIA_ROOT` —
+физически заглушка лежит в `media/default/new.jpg`.
+
+### Настройки (`core/settings.py`)
+
+```python
+MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_URL = '/media/'
+```
+
+и context processor `django.template.context_processors.media`,
+благодаря которому `{{ MEDIA_URL }}` доступен в любом шаблоне без
+передачи через каждую вьюху.
+
+### Раздача медиафайлов в разработке (`core/urls.py`)
+
+```python
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+```
+
+Работает только при `DEBUG = True` — в продакшене отдачу файлов из
+`media/` нужно будет настраивать отдельно (веб-сервер или объектное
+хранилище), сам Django этим заниматься не должен.
+
+### Использование в шаблонах
+
+`main.html` и `view_news.html` показывают картинку новости, а если
+её нет — заглушку:
+
+```django
+{% if item.image %}
+    <img class="news-card__image" src="{{ item.image.url }}" alt="{{ item.news }}">
+{% else %}
+    <img class="news-card__image" src="{{ MEDIA_URL }}default/new.jpg" alt="">
+{% endif %}
+```
+
+> Папка `media/` — не в git (см. `.gitignore`): в репозитории хранится
+> только код и миграции, сами загруженные файлы — нет.
+
+---
+
+## 16. Стилизация форм (`static/css/style.css`)
+
+Формы изначально стилизовались одним универсальным классом
+`.form-control` шириной 400px. Стили расширены до полноценной системы:
+
+- `.form-card` — карточка-контейнер формы (фон, рамка, тень,
+  `max-width`), в едином стиле с остальными поверхностями сайта
+  (`--surface`, `--border`, `--shadow` из общих CSS-переменных).
+- `.form-control` — общий стиль `input`/`textarea`/`select`: паддинги,
+  рамка, состояния `:hover` и `:focus` (акцентная обводка через
+  `box-shadow`, без грубого `outline`).
+- `.form-check` / `.form-check-input` — отдельная раскладка для
+  чекбокса `is_published`: чекбокс и подпись в одну строку, цвет самой
+  галочки — через `accent-color: var(--accent)`.
+- `.invalid-feedback` — сообщения об ошибках валидации под каждым
+  полем, плюс `.invalid-feedback--form` для ошибок уровня всей формы
+  (`form.non_field_errors`).
+- `.btn` / `.btn-primary` — единая кнопка отправки формы (акцентный
+  цвет, скругление, состояния `:hover`/`:active`), вместо голого
+  `<button>` без стилей.
+
+Тема (светлая/тёмная) для форм отдельно не настраивалась — все цвета
+берутся из тех же CSS-переменных `:root`, что и остальной сайт, поэтому
+переключение темы работает и для форм автоматически.
+
+---
+
+## 17. Возможные следующие шаги
+
+Обновлённый список того, что не сделано в текущей версии:
+
+- **Пагинация** списка новостей (`main.html` рендерит вообще все
+  объекты `News` за один раз).
+- **Поиск** по новостям — в `NewsAdminL.search_fields` уже есть
+  подсказка на будущее, но с багом: `search_fields = ('title', 'content')`
+  ссылается на несуществующее поле `title` (в модели поле называется
+  `news`) — поиск в `/admin/` в текущем виде упадёт с ошибкой.
+- **`get_category`** не обрабатывает случай отсутствующей категории
+  (`Category.objects.get(pk=category_id)` без `try`/`get_object_or_404`)
+  — в отличие от `view_news`, здесь несуществующий `id` даст не 404, а
+  необработанную 500-ю ошибку.
+- **Загрузка картинки через публичную форму** — поле `image` есть в
+  модели, но не добавлено в `NewsForm.Meta.fields`; чтобы заработало,
+  нужно также добавить `enctype="multipart/form-data"` в `add_news.html`
+  и передавать `request.FILES` во вьюхе.
+- **Редактирование и удаление новости** — сейчас есть только создание
+  (`add_news`); `edit_news`/`delete_news` ещё не реализованы.
+- **Тесты** — `news/tests.py` пока пустой.
 - Вынос `SECRET_KEY` и `DEBUG` в переменные окружения перед деплоем.
