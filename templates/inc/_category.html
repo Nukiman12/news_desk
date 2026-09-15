@@ -4,13 +4,13 @@
 {# Использует кастомные шаблонные теги из news/templatetags/news_tags.py.      #}
 
     {# get_categories — simple_tag: кладёт QuerySet всех категорий в переменную category #}
-    <div class="category">
+    <!-- <div class="category">
         {% get_categories as category %}
         {% for item in category %}
             {# Ссылка на страницу категории: /category/<pk>/ #}
             <a href="{% url 'category' item.pk %}" class="category__link">{{ item.title }}</a>
         {% endfor %}
-    </div>
+    </div> -->
 
     <br>
 

@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block content%}
+
+<main class="container page">
+    <section class="page-hero">
+        <p class="page-hero__eyebrow">Новая публикация</p>
+        <h1 class="page-hero__title">Добавить новость</h1>
+        <p class="page-hero__subtitle">Заполните форму, чтобы опубликовать материал</p>
+    </section>
+
+    <form class="form-card" action="{% url 'add_news' %}" method="post" novalidate>
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+        <div class="invalid-feedback invalid-feedback--form">
+            {{ form.non_field_errors }}
+        </div>
+        {% endif %}
+
+        {% for field in form %}
+            <div class="form_group">
+                <label class="form-label" for="{{field.id_for_label}}">{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}
+                <div class="invalid-feedback">{{ field.errors }}</div>
+                {% endif %}
+            </div>
+
+        {% endfor %}
+
+        {% comment %}
+
+        <div class="form_group">
+            <label class="form-label" for="{{form.news.id_for_label}}">Заголовок</label>
+            {{ form.news }}
+            {% if form.news.errors %}
+            <div class="invalid-feedback">{{ form.news.errors }}</div>
+            {% endif %}
+        </div>
+
+        <div class="form_group">
+            <label class="form-label" for="{{form.description.id_for_label}}">Текст новости</label>
+            {{ form.description }}
+            {% if form.description.errors %}
+            <div class="invalid-feedback">{{ form.description.errors }}</div>
+            {% endif %}
+        </div>
+
+        <div class="form_group">
+            <label class="form-label" for="{{form.Category.id_for_label}}">Категория</label>
+            {{ form.Category }}
+            {% if form.Category.errors %}
+            <div class="invalid-feedback">{{ form.Category.errors }}</div>
+            {% endif %}
+        </div>
+
+        <div class="form_group form-check">
+            {{ form.is_published }}
+            <label class="form-check-label" for="{{form.is_published.id_for_label}}">Опубликовать сразу</label>
+            {% if form.is_published.errors %}
+            <div class="invalid-feedback">{{ form.is_published.errors }}</div>
+            {% endif %}
+        </div>
+        {% endcomment %}
+
+
+        <button type="submit" class="btn btn-primary">Добавить новость</button>
+    </form>
+</main>
+
+{%endblock%}

@@ -1,8 +1,9 @@
 {% extends "base.html" %}
-{% load static %}
-{# main.html — главная страница ("Лента").                                    #}
-{# Рендерится вью news.views.main по адресу '/' (url name = 'main').          #}
-{# Контекст от вью: title, news (все объекты News).                          #}
+{# view_news.html — страница одной новости (полная карточка).                  #}
+{# Рендерится вью news.views.view_news по адресу '/news/<id>/'                 #}
+{# (url name = 'view_news'), открывается по ссылке "читать дальше" в main.html. #}
+{# Контекст от вью: news_news_item (один объект News); если такой новости нет —     #}
+{# вью отдаёт страницу 404 вместо рендера этого шаблона.                       #}
 
 {% block content %}
 
@@ -20,18 +21,17 @@
 
         {# Список новостей: по одной карточке на каждый объект News #}
         <section class="news">
-            {% for item in news %}
                 <article class="news-card">
                     <div class="news-card__meta">
                         <span class="news-card__badge">Новость</span>
-                        <time class="news-card__date">{{ item.created_at }}</time>
+                        <time class="news-card__date">{{ news_item.created_at }}</time>
                     
                     
                     </div>
                     
                     <div class="news-card__body">
-                        {% if item.image %}
-                            <img class="news-card__image" src="{{ item.image.url }}" alt="{{ item.news }}">
+                        {% if news_item.image %}
+                            <img class="news-card__image" src="{{ news_item.image.url }}" alt="{{ news_item.news }}">
                         {% else %}
                             <img class="news-card__image" src="{{ MEDIA_URL }}default/new.jpg" alt="">
                         {% endif %}
@@ -39,23 +39,17 @@
                    
                    
                         <div class="content">     
-                            <h2 class="news-card__title">{{ item.news }}</h2>
-                            <p class="news-card__description">{{ item.description }}</p>
-                            <p class="news-card__content">{{ item.content }}</p>
+                            <h2 class="news-card__title">{{ news_item.news }}</h2>
+                            <p class="news-card__description">{{ news_item.description }}</p>
+                            <p class="news-card__content">{{ news_item.content }}</p>
                             {# Ссылка на страницу отдельной новости: /news/<pk>/ (см. News.get_absolute_url) #}
-                            <a class="button_more" href="{{item.get_absolute_url}}">читать дальше</a>
+                            <a class="button_more" href="{{news_item.get_absolute_url}}">читать дальше</a>
                             {# Категория новости (FK News.Category) #}
-                            <p class="news-card__category">Категория: {{ item.Category }}</p>
+                            <p class="news-card__category">Категория: {{ news_item.Category }}</p>
                         </div>
                     </div>
                 </article>
-            {% empty %}
-                {# Показывается, если новостей в БД нет #}
-                <div class="news-empty">
-                    <h2>Пока нет новостей</h2>
-                    <p>Добавьте первую публикацию через админ-панель.</p>
-                </div>
-            {% endfor %}
+
         </section>
     </main>
 

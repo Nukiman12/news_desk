@@ -5,7 +5,7 @@
 
     <div class="category">
         {% for item in categories %}
-            {# Ссылка на страницу конкретной категории: /category/<pk>/ #}
-            <a href="{% url 'category' item.pk %}" class="category__link">{{ item.title }}</a>
+            {# Ссылка на страницу категории: /category/<pk>/ (см. Category.get_absolute_url) #}
+            <a href="{{item.get_absolute_url}}" class="category__link">{{ item.title }}</a>
         {% endfor %}
     </div>

@@ -62,6 +62,9 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                # Даёт доступ к {{ MEDIA_URL }} в любом шаблоне (нужно для
+                # картинок новостей в main.html).
+                'django.template.context_processors.media',
             ],
         },
     },
@@ -118,6 +121,9 @@ USE_TZ = True
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
+
+MEDIA_ROOT = BASE_DIR/"media"
+MEDIA_URL = '/media/'
 
 
 # Email

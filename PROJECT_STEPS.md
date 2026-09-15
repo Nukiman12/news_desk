@@ -198,8 +198,8 @@ urlpatterns = [
 ]
 ```
 
-Именованные маршруты (`name='main'`, `name='category'`) позволяют в
-шаблонах ссылаться на URL по имени, а не хардкодить строку:
+Именованные маршруты (`name='main'`, `name='category'`, `name='view_news'`)
+позволяют в шаблонах ссылаться на URL по имени, а не хардкодить строку:
 `{% url 'main' %}`, `{% url 'category' item.pk %}`.
 
 ---
@@ -213,6 +213,7 @@ templates/
 ├── base.html            # общий каркас (шапка + подвал)
 ├── main.html            # главная страница ("Лента")
 ├── category.html        # страница одной категории
+├── view_news.html       # страница одной новости
 ├── list_categories.html # список категорий (рендерится тегом show_categories)
 └── inc/
     └── _category.html   # переиспользуемый блок со списком категорий
@@ -334,15 +335,83 @@ python manage.py runserver
 
 - `http://127.0.0.1:8000/` — главная страница со списком новостей
 - `http://127.0.0.1:8000/category/<id>/` — новости одной категории
+- `http://127.0.0.1:8000/news/<id>/` — отдельная новость
 - `http://127.0.0.1:8000/admin/` — админка для добавления новостей и категорий
 
 ---
 
-## 13. Возможные следующие шаги
+## 13. Страница отдельной новости и `get_absolute_url` (в разработке, ещё не закоммичено)
+
+Раньше со страницы «Лента» перейти на конкретную новость было нельзя —
+были только списки (`main.html`, `category.html`). Добавлена страница
+одной новости и ссылка «читать дальше», ведущая на неё.
+
+### `get_absolute_url` в моделях (`news/models.py`)
+
+Вместо того чтобы в каждом шаблоне собирать URL через
+`{% url 'category' item.pk %}` / `{% url 'view_news' item.pk %}`,
+у моделей появился стандартный для Django метод `get_absolute_url`:
+
+```python
+class Category(models.Model):
+    ...
+    def get_absolute_url(self):
+        return reverse('category', kwargs={"category_id": self.pk})
+
+
+class News(models.Model):
+    ...
+    def get_absolute_url(self):
+        return reverse('view_news', kwargs={"news_id": self.pk})
+```
+
+`reverse()` строит URL по имени маршрута — так же, как тег `{% url %}`,
+только на уровне Python/модели. В шаблоне это теперь просто:
+
+```django
+<a href="{{ item.get_absolute_url }}">...</a>
+```
+
+`list_categories.html` и ссылка «читать дальше» в `main.html` уже
+переведены на `get_absolute_url` вместо `{% url %}`.
+
+### Новый маршрут (`news/urls.py`)
+
+```python
+path('news/<int:news_id>/', views.view_news, name="view_news")
+```
+
+### Новая вью (`news/views.py`)
+
+```python
+def view_news(request, news_id):
+    try:
+        news_item = News.objects.get(pk=news_id)
+        return render(request, 'view_news.html', {'news_item': news_item})
+    except News.DoesNotExist:
+        raise Http404("not found")
+```
+
+Если новости с таким `id` нет — отдаётся стандартная страница 404,
+а не падение с `DoesNotExist`. (В коде оставлен закомментированный
+более короткий вариант через `get_object_or_404` как альтернатива —
+делает то же самое в одну строку.)
+
+### Новый шаблон (`templates/view_news.html`)
+
+Наследуется от `base.html`, как и остальные страницы, и выводит один
+объект `news_item` — по сути та же карточка новости, что и в
+`main.html`, но без остального списка.
+
+> Эти изменения ещё не закоммичены в git — раздел описывает уже
+> сделанную, но пока не зафиксированную работу.
+
+---
+
+## 14. Возможные следующие шаги
 
 Не сделано в текущей версии, но логично напрашивается дальше:
 
 - Пагинация списка новостей.
-- Страница отдельной новости (сейчас есть только списки).
 - Поиск по новостям (поле `search_fields` в админке уже намекает на это).
 - Вынос `SECRET_KEY` и `DEBUG` в переменные окружения перед деплоем.
